@@ -85,7 +85,13 @@ def transcribe():
         
         # Get transcript using youtube-transcript-api
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+            # Initialize the API and fetch transcript
+            api = YouTubeTranscriptApi()
+            transcript_data = api.fetch(video_id)
+            
+            # Convert FetchedTranscript to list format for compatibility
+            transcript_list = [{"text": snippet.text, "start": snippet.start, "duration": snippet.duration} 
+                             for snippet in transcript_data]
             
             # Format transcript as a single text string
             full_transcript = " ".join([entry['text'] for entry in transcript_list])
