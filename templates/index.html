@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Transcript Extractor</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <!-- Header -->
+                <div class="text-center mb-5">
+                    <h1 class="display-4 mb-3">
+                        <i class="fab fa-youtube text-danger me-3"></i>
+                        YouTube Transcript Extractor
+                    </h1>
+                    <p class="lead text-muted">
+                        Extract transcripts from YouTube videos using their URL
+                    </p>
+                </div>
+
+                <!-- Main Form -->
+                <div class="card shadow">
+                    <div class="card-body p-4">
+                        <form id="transcriptForm">
+                            <div class="mb-4">
+                                <label for="youtubeUrl" class="form-label">
+                                    <i class="fas fa-link me-2"></i>
+                                    YouTube Video URL
+                                </label>
+                                <div class="input-group">
+                                    <input 
+                                        type="url" 
+                                        class="form-control form-control-lg" 
+                                        id="youtubeUrl" 
+                                        placeholder="https://www.youtube.com/watch?v=..." 
+                                        required
+                                    >
+                                    <button 
+                                        type="submit" 
+                                        class="btn btn-primary btn-lg" 
+                                        id="submitBtn"
+                                    >
+                                        <i class="fas fa-download me-2"></i>
+                                        Extract Transcript
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    Supports various YouTube URL formats (youtube.com, youtu.be, etc.)
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="text-center mt-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Extracting transcript...</p>
+                </div>
+
+                <!-- Error Display -->
+                <div id="errorAlert" class="alert alert-danger mt-4" style="display: none;">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span id="errorMessage"></span>
+                </div>
+
+                <!-- Success Display -->
+                <div id="successResult" class="mt-4" style="display: none;">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Transcript Extracted Successfully
+                            </h5>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="copyTranscript()">
+                                <i class="fas fa-copy me-1"></i>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <strong>Video ID:</strong> 
+                                <code id="videoId" class="ms-2"></code>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Transcript:</strong>
+                            </div>
+                            <div 
+                                id="transcriptContent" 
+                                class="p-3 bg-dark border rounded" 
+                                style="max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;"
+                            ></div>
+                        </div>
+                    </div>
+
+                    <!-- Raw JSON Response (Collapsible) -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <button 
+                                class="btn btn-link p-0 text-decoration-none" 
+                                type="button" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#jsonResponse"
+                            >
+                                <i class="fas fa-code me-2"></i>
+                                View Raw JSON Response
+                            </button>
+                        </div>
+                        <div id="jsonResponse" class="collapse">
+                            <div class="card-body">
+                                <pre id="rawJson" class="bg-dark p-3 rounded" style="overflow-x: auto; font-size: 0.875rem;"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Example URLs -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Example URLs
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">Try these example formats:</p>
+                        <ul class="list-unstyled">
+                            <li><code>https://www.youtube.com/watch?v=dQw4w9WgXcQ</code></li>
+                            <li><code>https://youtu.be/dQw4w9WgXcQ</code></li>
+                            <li><code>https://youtube.com/watch?v=dQw4w9WgXcQ</code></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="container mt-5 py-4">
+        <div class="text-center text-muted">
+            <p>&copy; 2025 YouTube Transcript Extractor. Built with Flask and Bootstrap.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        const form = document.getElementById('transcriptForm');
+        const urlInput = document.getElementById('youtubeUrl');
+        const submitBtn = document.getElementById('submitBtn');
+        const loadingState = document.getElementById('loadingState');
+        const errorAlert = document.getElementById('errorAlert');
+        const errorMessage = document.getElementById('errorMessage');
+        const successResult = document.getElementById('successResult');
+        const videoId = document.getElementById('videoId');
+        const transcriptContent = document.getElementById('transcriptContent');
+        const rawJson = document.getElementById('rawJson');
+
+        let currentTranscript = '';
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const url = urlInput.value.trim();
+            if (!url) {
+                showError('Please enter a YouTube URL');
+                return;
+            }
+
+            // Reset UI state
+            hideAllStates();
+            showLoading();
+            
+            try {
+                const response = await fetch('/transcribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess(data);
+                } else {
+                    showError(data.error || 'An error occurred while processing the request');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Network error: Unable to connect to the server');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        function hideAllStates() {
+            loadingState.style.display = 'none';
+            errorAlert.style.display = 'none';
+            successResult.style.display = 'none';
+        }
+
+        function showLoading() {
+            loadingState.style.display = 'block';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+        }
+
+        function hideLoading() {
+            loadingState.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-download me-2"></i>Extract Transcript';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorAlert.style.display = 'block';
+            // Scroll to error
+            errorAlert.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showSuccess(data) {
+            videoId.textContent = data.video_id;
+            transcriptContent.textContent = data.transcript;
+            rawJson.textContent = JSON.stringify(data, null, 2);
+            currentTranscript = data.transcript;
+            successResult.style.display = 'block';
+            // Scroll to result
+            successResult.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function copyTranscript() {
+            if (currentTranscript) {
+                navigator.clipboard.writeText(currentTranscript).then(function() {
+                    // Show temporary success feedback
+                    const copyBtn = event.target.closest('button');
+                    const originalText = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+                    copyBtn.classList.add('btn-outline-success');
+                    copyBtn.classList.remove('btn-outline-secondary');
+                    
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalText;
+                        copyBtn.classList.remove('btn-outline-success');
+                        copyBtn.classList.add('btn-outline-secondary');
+                    }, 2000);
+                }).catch(function(error) {
+                    console.error('Error copying to clipboard:', error);
+                    alert('Failed to copy transcript to clipboard');
+                });
+            }
+        }
+
+        // Health check on page load
+        window.addEventListener('load', async function() {
+            try {
+                const response = await fetch('/health');
+                if (!response.ok) {
+                    console.warn('Health check failed');
+                }
+            } catch (error) {
+                console.warn('Could not connect to server for health check');
+            }
+        });
+    </script>
+</body>
+</html>
